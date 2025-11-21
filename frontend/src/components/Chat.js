@@ -98,7 +98,7 @@ export default function Chat() {
     setMessages(prev => [...prev, { sender: 'user', content: userInput }]);
 
     // Build API URL. Support natural phrasings for compare, price growth, and analysis.
-    let url = 'http://localhost:8000/api/analyze/';
+    let url = 'https://realestatechatbotopenai-production.up.railway.app/api/analyze/';
 
     // 1) Compare queries: "Compare A and B", "A vs B", "compare A and B demand trends"
     const compareRegex = /(?:^|\b)compare\b\s+(.+?)(?:\s+demand trends)?$/i;
