@@ -1,0 +1,15 @@
+# Node modules
+frontend/node_modules/
+
+# Python virtual environment
+.venv/
+
+# Django cache files
+__pycache__/
+*.pyc
+
+# Build files
+frontend/build/
+
+# Environment variables
+.env
