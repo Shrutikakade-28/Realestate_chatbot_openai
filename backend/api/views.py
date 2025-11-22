@@ -1,4 +1,5 @@
 import json
+import difflib
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
@@ -82,22 +83,47 @@ def _find_area_df(df, area_query):
         return df.iloc[0:0]
 
     q = str(area_query).strip().lower()
-    # direct exact match first
-    mask_exact = df['Area'].astype(str).str.lower() == q
+
+    # Work on a cleaned column so matching is more forgiving (remove punctuation)
+    working = df.copy()
+    working['Area_clean'] = working['Area'].astype(str).str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.strip()
+
+    # direct exact match first (cleaned)
+    mask_exact = working['Area_clean'] == q
     if mask_exact.any():
-        return df[mask_exact].copy()
+        return working[mask_exact].copy()
 
     # then contains
-    mask_contains = df['Area'].astype(str).str.lower().str.contains(q, na=False)
+    mask_contains = working['Area_clean'].str.contains(q, na=False)
     if mask_contains.any():
-        return df[mask_contains].copy()
+        return working[mask_contains].copy()
 
     # then startswith
-    mask_starts = df['Area'].astype(str).str.lower().str.startswith(q, na=False)
+    mask_starts = working['Area_clean'].str.startswith(q, na=False)
     if mask_starts.any():
-        return df[mask_starts].copy()
+        return working[mask_starts].copy()
 
-    # no match
+    # fuzzy matching: try close matches among unique cleaned area names
+    choices = working['Area_clean'].dropna().unique().tolist()
+    # use difflib to find close matches (cutoff can be tuned)
+    matches = difflib.get_close_matches(q, choices, n=1, cutoff=0.7)
+    if matches:
+        matched = matches[0]
+        return working[working['Area_clean'] == matched].copy()
+
+    # final attempt: pick the best sequence-similarity score if reasonably close
+    best = None
+    best_score = 0.0
+    for choice in choices:
+        score = difflib.SequenceMatcher(None, q, choice).ratio()
+        if score > best_score:
+            best_score = score
+            best = choice
+
+    if best_score >= 0.6 and best:
+        return working[working['Area_clean'] == best].copy()
+
+    # no match found
     return df.iloc[0:0]
 
 @csrf_exempt
